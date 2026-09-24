@@ -21,7 +21,7 @@ def test_convert_real_file(tmp_path):
     src = tmp_path / "in.mp4"
     subprocess.run(
         [ffmpeg, "-v", "error", "-f", "lavfi", "-i", "testsrc=d=1:s=320x240:r=25",
-         "-f", "lavfi", "-i", "sine=d=1", "-c:v", "libx264", "-c:a", "aac", str(src)],
+         "-f", "lavfi", "-i", "sine=d=1", "-c:v", "mpeg4", "-c:a", "aac", str(src)],
         check=True,
     )
     dst = core.output_path(src)
