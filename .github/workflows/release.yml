@@ -1,0 +1,46 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pyinstaller pytest
+      - name: Install ffmpeg (Linux, for tests)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Fetch ffmpeg (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl.zip -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip ffmpeg
+          Copy-Item ffmpeg/*/bin/ffmpeg.exe, ffmpeg/*/bin/ffprobe.exe .
+          echo "$PWD" >> $env:GITHUB_PATH
+      - run: python -m pytest
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          pyinstaller --onefile --name resolvify run.py
+          mv dist/resolvify dist/resolvify-linux-x86_64
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          pyinstaller --windowed --name resolvify --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." run.py
+          Compress-Archive dist/resolvify dist/resolvify-windows-x86_64.zip
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/resolvify-linux-x86_64
+            dist/resolvify-windows-x86_64.zip
